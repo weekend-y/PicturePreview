@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="picture_preview_default_dialog">
+        <!-- 窗口的背景颜色 -->
+        <item name="android:windowBackground">@color/black_alpha30</item>
+    </style>
+
+
+</resources>
