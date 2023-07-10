@@ -4,15 +4,16 @@ import android.animation.ObjectAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.util.AttributeSet
+import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ViewConfiguration
-import kotlin.math.abs
 import com.github.chrisbanes.photoview.PhotoView
+import kotlin.math.abs
 
 class PreviewImage @JvmOverloads constructor(
-    context: Context,
-    attrs: AttributeSet? = null,
-    defStyleAttr: Int = 0
+        context: Context,
+        attrs: AttributeSet? = null,
+        defStyleAttr: Int = 0
 ) : PhotoView(context, attrs, defStyleAttr) {
 
     // 手指按下的点为(x1, y1)手指离开屏幕的点为(x2, y2)
@@ -43,11 +44,11 @@ class PreviewImage @JvmOverloads constructor(
     // 是否单击关闭预览页面
     private var isClickClose =true
     // 向下滑的时候是否将图片大小变小
-    private var isSlideChangeSize = false
+    private var isSlideChangeSize = true
     // 滑动距离达到屏幕的几分之一则飞回。
     private val FLING_RATIO = 3
     // 单指拖动的时候图片运动轨迹: true:只纵向移动; false:跟随手指随意移动
-    private val isSlideOnlyVertical = true
+    private val isSlideOnlyVertical = false
     //一些可选配置 }
 
     init {
@@ -91,11 +92,9 @@ class PreviewImage @JvmOverloads constructor(
 
                 // 如果是手动放大，不做复原，缩小则会复原
                 if (scale <= 1.0f) {
-                    //PhotoView的bug，虽设置了最小scale，但是还是可以强制缩小到小于scale一点点的大小，
-                    //当复原如果是使用动画的话，会设置scale从低于最小scale开始从而会抛出异常，
-                    //当前需求不需要缩小，因此可通过直接恢复的方式避开动画的异常
-                    scale = 1.0f
-                    //ObjectAnimator.ofFloat(this, "scale", scale, 1.0f).start()
+                    if (scale <= photoMinScale) scale = photoMinScale
+                    ObjectAnimator.ofFloat(this, "scale", scale, 1.0f).start()
+                    minimumScale = photoMinScale
                 }
                 ObjectAnimator.ofFloat(this, "malpha", mAlpha, 1.0f).start()
                 attacher.onTouch(this, event)
@@ -141,14 +140,18 @@ class PreviewImage @JvmOverloads constructor(
     private fun moveAndScale(event: MotionEvent, fl: Float, fl1: Float): Boolean {
         locationX = fl.toInt()
         locationY = fl1.toInt()
-        scrollTo(if(isSlideOnlyVertical) 0 else locationX, locationY)
+        scrollTo(if (isSlideOnlyVertical) 0 else locationX, locationY)
 
         // 手指滑动的时候，改变背景透明度和图片大小
         // 滑动比例
         var fl2 = abs(locationY).toFloat()
         var cale = (height/2 - fl2) / (height / 2)
         if (cale <= 0.3f) cale = 0.3f
-        if(isSlideChangeSize) scale = cale
+        if(isSlideChangeSize) {
+            //PhotoView规定scale不能低于minimumScale，否则抛出异常，因此这里同步设置，然后在手指up的时候设置回去
+            minimumScale = cale
+            scale = cale
+        }
         setMalpha(cale)
 
         return false
